@@ -1,0 +1,205 @@
+"use client"
+
+import { useState } from "react"
+import { Navbar } from "@/components/navbar"
+import { Footer } from "@/components/footer"
+import { WalletConnection } from "@/components/wallet-connection"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Plus, DollarSign, Package, TrendingUp } from "lucide-react"
+import { useAccount } from "wagmi"
+import { useQuery } from "@tanstack/react-query"
+
+const SellerDashboard = () => {
+  const [isWalletConnected, setIsWalletConnected] = useState(false)
+  const { address } = useAccount()
+
+  const { data, isLoading } = useQuery({
+    enabled: isWalletConnected && !!address,
+    queryKey: ["seller-orders", address],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders?role=seller&wallet=${address}`)
+      if (!res.ok) throw new Error("Failed to load orders")
+      return (await res.json()) as { orders: any[] }
+    },
+  })
+
+  const orders = data?.orders ?? []
+
+  const formatCurrency = (cents: number, currency: string) =>
+    new Intl.NumberFormat(undefined, { style: "currency", currency }).format(cents / 100)
+
+  if (!isWalletConnected) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <WalletConnection userType="seller" onConnected={() => setIsWalletConnected(true)} />
+        <Footer />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen">
+      <Navbar />
+      <main className="pt-24 pb-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card className="glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Sales</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                  {isLoading
+                    ? "…"
+                    : formatCurrency(
+                        orders.reduce((sum, o) => sum + (o.amount_cents || 0), 0),
+                        orders[0]?.currency || "USD",
+                      )}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Active Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                  {isLoading ? "…" : orders.filter((o) => o.status !== "completed" && o.status !== "cancelled").length}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Escrow Locked</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                  {isLoading
+                    ? "…"
+                    : formatCurrency(
+                        orders.filter((o) => o.status === "locked").reduce((sum, o) => sum + (o.amount_cents || 0), 0),
+                        orders[0]?.currency || "USD",
+                      )}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                  {isLoading ? "…" : orders.filter((o) => o.status === "completed").length}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Active Orders */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold font-[family-name:var(--font-orbitron)] text-foreground">
+              Active Orders
+            </h2>
+
+            {isLoading && <p className="text-muted-foreground">Loading orders…</p>}
+            {!isLoading && orders.length === 0 && (
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle>No orders yet</CardTitle>
+                  <CardDescription>Your incoming orders will appear here once buyers purchase.</CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+
+            {!isLoading &&
+              orders.map((order) => (
+                <Card key={order.id} className="glass-card hover:neon-glow transition-all duration-300">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Package className="h-5 w-5 text-primary" />
+                          {order.product}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          Order #{order.id} • Buyer: {order.buyer_name || "—"}
+                        </CardDescription>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                          {formatCurrency(order.amount_cents, order.currency || "USD")}
+                        </div>
+                        <Badge className="bg-primary/20 text-primary border-primary/30 capitalize">
+                          {order.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        <Badge variant="outline" className="capitalize">
+                          {order.status}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Status: {order.status === "delivered" ? "Awaiting buyer confirmation" : "Processing order"}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button asChild variant="outline" size="sm" className="cyber-border bg-transparent">
+                          <a href={`/escrow?orderId=${order.id}`}>View Details</a>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold font-[family-name:var(--font-orbitron)] text-foreground mb-6">
+              Quick Actions
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="glass-card hover:neon-glow transition-all duration-300 cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Plus className="h-5 w-5 text-primary" />
+                    Add New Product
+                  </CardTitle>
+                  <CardDescription>List a new product for sale with escrow protection</CardDescription>
+                </CardHeader>
+              </Card>
+              <Card className="glass-card hover:neon-glow transition-all duration-300 cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    View Analytics
+                  </CardTitle>
+                  <CardDescription>Track your sales performance and trends</CardDescription>
+                </CardHeader>
+              </Card>
+              <Card className="glass-card hover:neon-glow transition-all duration-300 cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                    Withdraw Funds
+                  </CardTitle>
+                  <CardDescription>Transfer completed escrow funds to your account</CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  )
+}
+
+export default SellerDashboard

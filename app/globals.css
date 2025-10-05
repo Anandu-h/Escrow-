@@ -1,0 +1,221 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated to neon yellow-green and deep blue color scheme */
+  --background: #000620; /* Much Darker Deep Blue */
+  --foreground: #ffffff; /* Clean white */
+  --card: rgba(0, 6, 32, 0.9); /* Semi-transparent darker blue card */
+  --card-foreground: #ffffff;
+  --popover: #000a28;
+  --popover-foreground: #ffffff;
+  --primary: #ccff00; /* Fluorescent Yellow-Green */
+  --primary-foreground: #000620;
+  --secondary: #001240; /* Slightly lighter blue */
+  --secondary-foreground: #ffffff;
+  --muted: #000e35;
+  --muted-foreground: #b3b3b3;
+  --accent: #ccff00; /* Neon yellow-green accent */
+  --accent-foreground: #000620;
+  --destructive: #ff4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(204, 255, 0, 0.2); /* Neon border */
+  --input: rgba(0, 6, 32, 0.95);
+  --ring: #ccff00; /* Neon focus ring */
+  --chart-1: #ccff00;
+  --chart-2: #00ffcc;
+  --chart-3: #66ccff;
+  --chart-4: #ff6666;
+  --chart-5: #cc66ff;
+  --radius: 0.75rem;
+  --sidebar: #000a28;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ccff00;
+  --sidebar-primary-foreground: #000620;
+  --sidebar-accent: #001240;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(204, 255, 0, 0.2);
+  --sidebar-ring: #ccff00;
+
+  /* Custom neon gradients and effects */
+  --gradient-primary: linear-gradient(135deg, #000620, #001240);
+  --gradient-accent: linear-gradient(135deg, #ccff00, #99ff00);
+  --gradient-card: linear-gradient(135deg, rgba(0, 6, 32, 0.9), rgba(0, 18, 64, 0.7));
+  --neon-glow: 0 0 8px rgba(204, 255, 0, 0.25);
+  --neon-glow-strong: 0 0 14px rgba(204, 255, 0, 0.35);
+}
+
+.dark {
+  /* Dark mode uses same neon colors */
+  --background: #000620;
+  --foreground: #ffffff;
+  --card: rgba(0, 6, 32, 0.95);
+  --card-foreground: #ffffff;
+  --popover: #000a28;
+  --popover-foreground: #ffffff;
+  --primary: #ccff00;
+  --primary-foreground: #000620;
+  --secondary: #001240;
+  --secondary-foreground: #ffffff;
+  --muted: #000e35;
+  --muted-foreground: #cccccc;
+  --accent: #ccff00;
+  --accent-foreground: #000620;
+  --destructive: #ff4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(204, 255, 0, 0.3);
+  --input: rgba(0, 6, 32, 0.95);
+  --ring: #ccff00;
+}
+
+@theme inline {
+  /* point font-sans to Sora instead of Geist */
+  --font-sans: var(--font-sora);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Much darker blue background with subtle texture */
+    background: linear-gradient(135deg, #000620 0%, #000e35 50%, #001240 100%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply backdrop-blur-xl bg-card/80 border border-border/30;
+    /* Updated shadow for darker background */
+    box-shadow: 0 8px 32px rgba(0, 6, 32, 0.4), inset 0 1px 0 rgba(204, 255, 0, 0.1);
+  }
+
+  .primary-gradient {
+    background: var(--gradient-primary);
+  }
+
+  .accent-gradient {
+    background: var(--gradient-accent);
+  }
+
+  .card-gradient {
+    background: var(--gradient-card);
+  }
+
+  .text-gradient {
+    /* Neon yellow-green gradient text */
+    background: linear-gradient(135deg, #ccff00, #99ff00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .professional-shadow {
+    box-shadow: 0 4px 20px rgba(0, 6, 32, 0.2);
+  }
+
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 6, 32, 0.4);
+  }
+
+  /* Added neon glow effects */
+  .neon-glow {
+    box-shadow: var(--neon-glow);
+  }
+
+  .neon-glow-strong {
+    box-shadow: var(--neon-glow-strong);
+  }
+
+  .neon-border {
+    border: 1px solid rgba(204, 255, 0, 0.65);
+    box-shadow: 0 0 6px rgba(204, 255, 0, 0.18);
+  }
+
+  .cyber-grid {
+    background-image: linear-gradient(rgba(204, 255, 0, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(204, 255, 0, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  /* Added typing animation */
+  .typing-cursor {
+    border-right: 3px solid #ccff00;
+    animation: blink-caret 0.75s step-end infinite;
+  }
+
+  @keyframes blink-caret {
+    from,
+    to {
+      border-color: transparent;
+    }
+    50% {
+      border-color: #ccff00;
+    }
+  }
+
+  /* add reusable text glow utilities for normal and gradient text */
+  .glow-text {
+    text-shadow: 0 0 4px rgba(204, 255, 0, 0.35), 0 0 8px rgba(204, 255, 0, 0.2);
+  }
+
+  .glow-text-soft {
+    text-shadow: 0 0 3px rgba(204, 255, 0, 0.2), 0 0 6px rgba(204, 255, 0, 0.12);
+  }
+
+  /* For gradient-clipped text (text is transparent), use filter drop-shadow */
+  .glow-filter {
+    filter: drop-shadow(0 0 4px rgba(204, 255, 0, 0.25)) drop-shadow(0 0 8px rgba(204, 255, 0, 0.18));
+  }
+
+  .glow-filter-strong {
+    filter: drop-shadow(0 0 6px rgba(204, 255, 0, 0.3)) drop-shadow(0 0 12px rgba(204, 255, 0, 0.22))
+      drop-shadow(0 0 18px rgba(204, 255, 0, 0.18));
+  }
+}
