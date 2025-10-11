@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Sora, Geist_Mono } from "next/font/google"
+import { Sora, Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { Providers } from "@/components/providers"
@@ -12,7 +12,7 @@ const sora = Sora({
   display: "swap",
 })
 
-const geistMono = Geist_Mono({
+const geistMono = Roboto_Mono({
   subsets: ["latin"],
   variable: "--font-geist-mono",
   display: "swap",

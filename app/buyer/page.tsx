@@ -4,11 +4,12 @@ import { useState } from "react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { WalletConnection } from "@/components/wallet-connection"
+import { ProductBrowser } from "@/components/product-browser"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Package, Clock, CheckCircle, Truck, Shield } from "lucide-react"
+import { Package, Clock, CheckCircle, Truck, Shield, ShoppingCart, X } from "lucide-react"
 import { useAccount } from "wagmi"
 import { useQuery } from "@tanstack/react-query"
 
@@ -43,10 +44,11 @@ const formatCurrency = (cents: number, currency: string) =>
 
 export default function BuyerDashboard() {
   const [isWalletConnected, setIsWalletConnected] = useState(false)
+  const [showProductBrowser, setShowProductBrowser] = useState(false)
   const { address } = useAccount()
 
   // derive data when connected
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     enabled: isWalletConnected && !!address,
     queryKey: ["buyer-orders", address],
     queryFn: async () => {
@@ -58,11 +60,43 @@ export default function BuyerDashboard() {
 
   const orders = data?.orders ?? []
 
+  const handleProductSelected = (product: any) => {
+    setShowProductBrowser(false)
+    refetch()
+  }
+
   if (!isWalletConnected) {
     return (
       <div className="min-h-screen">
         <Navbar />
         <WalletConnection userType="buyer" onConnected={() => setIsWalletConnected(true)} />
+        <Footer />
+      </div>
+    )
+  }
+
+  if (showProductBrowser) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <main className="pt-24 pb-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-3xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                Browse Products
+              </h1>
+              <Button
+                variant="outline"
+                onClick={() => setShowProductBrowser(false)}
+                className="cyber-border bg-transparent"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </div>
+            <ProductBrowser onProductSelect={handleProductSelected} />
+          </div>
+        </main>
         <Footer />
       </div>
     )
@@ -139,6 +173,15 @@ export default function BuyerDashboard() {
                 <CardHeader>
                   <CardTitle>No orders yet</CardTitle>
                   <CardDescription>Your active orders will appear here once you purchase.</CardDescription>
+                  <div className="mt-4">
+                    <Button
+                      onClick={() => setShowProductBrowser(true)}
+                      className="neon-gradient"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Browse Products
+                    </Button>
+                  </div>
                 </CardHeader>
               </Card>
             )}

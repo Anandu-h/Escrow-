@@ -4,18 +4,20 @@ import { useState } from "react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { WalletConnection } from "@/components/wallet-connection"
+import { ProductForm } from "@/components/product-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Plus, DollarSign, Package, TrendingUp } from "lucide-react"
+import { Plus, DollarSign, Package, TrendingUp, X } from "lucide-react"
 import { useAccount } from "wagmi"
 import { useQuery } from "@tanstack/react-query"
 
 const SellerDashboard = () => {
   const [isWalletConnected, setIsWalletConnected] = useState(false)
+  const [showProductForm, setShowProductForm] = useState(false)
   const { address } = useAccount()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     enabled: isWalletConnected && !!address,
     queryKey: ["seller-orders", address],
     queryFn: async () => {
@@ -24,6 +26,11 @@ const SellerDashboard = () => {
       return (await res.json()) as { orders: any[] }
     },
   })
+
+  const handleProductCreated = () => {
+    setShowProductForm(false)
+    refetch()
+  }
 
   const orders = data?.orders ?? []
 
@@ -35,6 +42,33 @@ const SellerDashboard = () => {
       <div className="min-h-screen">
         <Navbar />
         <WalletConnection userType="seller" onConnected={() => setIsWalletConnected(true)} />
+        <Footer />
+      </div>
+    )
+  }
+
+  if (showProductForm) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <main className="pt-24 pb-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-3xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                Create New Product
+              </h1>
+              <Button
+                variant="outline"
+                onClick={() => setShowProductForm(false)}
+                className="cyber-border bg-transparent"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+            <ProductForm onProductCreated={handleProductCreated} />
+          </div>
+        </main>
         <Footer />
       </div>
     )
@@ -166,7 +200,10 @@ const SellerDashboard = () => {
               Quick Actions
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="glass-card hover:neon-glow transition-all duration-300 cursor-pointer">
+              <Card 
+                className="glass-card hover:neon-glow transition-all duration-300 cursor-pointer"
+                onClick={() => setShowProductForm(true)}
+              >
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Plus className="h-5 w-5 text-primary" />
