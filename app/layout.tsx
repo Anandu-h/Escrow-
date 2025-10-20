@@ -4,6 +4,7 @@ import { Sora, Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { Providers } from "@/components/providers"
+import { ClientOnly } from "@/components/client-only"
 import "./globals.css"
 
 const sora = Sora({
@@ -33,7 +34,9 @@ export default function RootLayout({
     <html lang="en" className={`${sora.variable} ${geistMono.variable} dark antialiased`}>
       <body className="font-sans">
         <Providers>
-          <Suspense fallback={null}>{children}</Suspense>
+          <ClientOnly>
+            <Suspense fallback={null}>{children}</Suspense>
+          </ClientOnly>
         </Providers>
         <Analytics />
       </body>
