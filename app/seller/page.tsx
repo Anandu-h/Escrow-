@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { WalletConnection } from "@/components/wallet-connection"
@@ -14,6 +14,8 @@ import { useQuery } from "@tanstack/react-query"
 
 const SellerDashboard = () => {
   const [isWalletConnected, setIsWalletConnected] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => setIsMounted(true), [])
   const [showProductForm, setShowProductForm] = useState(false)
   const { address } = useAccount()
 
@@ -25,17 +27,34 @@ const SellerDashboard = () => {
       if (!res.ok) throw new Error("Failed to load orders")
       return (await res.json()) as { orders: any[] }
     },
+    refetchInterval: false,
+    refetchOnWindowFocus: true,
   })
 
-  const handleProductCreated = () => {
+  const handleProductCreated = async () => {
     setShowProductForm(false)
-    refetch()
+    // Force refetch to get the newly created product
+    await refetch()
   }
 
   const orders = data?.orders ?? []
 
+  // Separate pending products (listings) from active orders
+  const pendingProducts = orders.filter((o) => o.status === "pending" && !o.buyer_wallet)
+  const activeOrders = orders.filter((o) => o.status !== "pending" || o.buyer_wallet)
+
   const formatCurrency = (cents: number, currency: string) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency }).format(cents / 100)
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <main className="pt-24 pb-12" />
+        <Footer />
+      </div>
+    )
+  }
 
   if (!isWalletConnected) {
     return (
@@ -83,17 +102,13 @@ const SellerDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card className="glass-card">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Sales</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
-                  {isLoading
-                    ? "…"
-                    : formatCurrency(
-                        orders.reduce((sum, o) => sum + (o.amount_cents || 0), 0),
-                        orders[0]?.currency || "USD",
-                      )}
+                  {isLoading ? "…" : pendingProducts.length}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Active listings</p>
               </CardContent>
             </Card>
             <Card className="glass-card">
@@ -102,8 +117,25 @@ const SellerDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
-                  {isLoading ? "…" : orders.filter((o) => o.status !== "completed" && o.status !== "cancelled").length}
+                  {isLoading ? "…" : activeOrders.filter((o) => o.status !== "completed" && o.status !== "cancelled").length}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">In progress</p>
+              </CardContent>
+            </Card>
+            <Card className="glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Sales</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                  {isLoading
+                    ? "…"
+                    : formatCurrency(
+                        activeOrders.filter((o) => o.status === "completed").reduce((sum, o) => sum + (o.amount_cents || 0), 0),
+                        orders[0]?.currency || "USD",
+                      )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Completed</p>
               </CardContent>
             </Card>
             <Card className="glass-card">
@@ -115,22 +147,69 @@ const SellerDashboard = () => {
                   {isLoading
                     ? "…"
                     : formatCurrency(
-                        orders.filter((o) => o.status === "locked").reduce((sum, o) => sum + (o.amount_cents || 0), 0),
+                        activeOrders.filter((o) => o.status === "locked").reduce((sum, o) => sum + (o.amount_cents || 0), 0),
                         orders[0]?.currency || "USD",
                       )}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">In escrow</p>
               </CardContent>
             </Card>
-            <Card className="glass-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
-                  {isLoading ? "…" : orders.filter((o) => o.status === "completed").length}
-                </div>
-              </CardContent>
-            </Card>
+          </div>
+
+          {/* My Products */}
+          <div className="space-y-6 mb-12">
+            <h2 className="text-2xl font-bold font-[family-name:var(--font-orbitron)] text-foreground">
+              My Products
+            </h2>
+
+            {isLoading && <p className="text-muted-foreground">Loading products…</p>}
+            {!isLoading && pendingProducts.length === 0 && (
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle>No products listed</CardTitle>
+                  <CardDescription>Create your first product to start selling</CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+
+            {!isLoading &&
+              pendingProducts.map((product) => (
+                <Card key={product.id} className="glass-card hover:neon-glow transition-all duration-300">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Package className="h-5 w-5 text-primary" />
+                          {product.product}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          Product #{product.id} • {product.delivery_status || "No description"}
+                        </CardDescription>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-gradient font-[family-name:var(--font-orbitron)]">
+                          {formatCurrency(product.amount_cents, product.currency || "USD")}
+                        </div>
+                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30 capitalize">
+                          Available
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        <Badge variant="outline" className="capitalize">
+                          Listed for sale
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Waiting for buyer
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
           </div>
 
           {/* Active Orders */}
@@ -140,17 +219,17 @@ const SellerDashboard = () => {
             </h2>
 
             {isLoading && <p className="text-muted-foreground">Loading orders…</p>}
-            {!isLoading && orders.length === 0 && (
+            {!isLoading && activeOrders.length === 0 && (
               <Card className="glass-card">
                 <CardHeader>
-                  <CardTitle>No orders yet</CardTitle>
-                  <CardDescription>Your incoming orders will appear here once buyers purchase.</CardDescription>
+                  <CardTitle>No active orders</CardTitle>
+                  <CardDescription>Orders will appear here once buyers purchase your products</CardDescription>
                 </CardHeader>
               </Card>
             )}
 
             {!isLoading &&
-              orders.map((order) => (
+              activeOrders.map((order) => (
                 <Card key={order.id} className="glass-card hover:neon-glow transition-all duration-300">
                   <CardHeader>
                     <div className="flex justify-between items-start">
