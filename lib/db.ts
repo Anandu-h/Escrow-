@@ -14,8 +14,12 @@ function createPool() {
   const host = process.env.MYSQL_HOST || "localhost"
   const port = Number(process.env.MYSQL_PORT || 3306)
   const user = process.env.MYSQL_USER || "root"
-  const password = process.env.MYSQL_PASSWORD || ""
+  const password = process.env.MYSQL_PASSWORD || "Akvs2910*"
   const database = process.env.MYSQL_DATABASE || "escrow_app"
+
+  if (!password) {
+    throw new Error('MYSQL_PASSWORD environment variable is required. Please set it in .env.local file')
+  }
 
   return mysql.createPool({
     host,

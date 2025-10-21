@@ -35,19 +35,74 @@ export async function POST(req: Request) {
       users = [{ id: (insertUser as any).insertId }]
     }
 
-    const sellerId = users[0].id
+    // Convert price to cents for storage
+    const amountCents = Math.round(price * 100)
 
-    const result = await query<{ insertId: number }>(
+    // Handle image uploads (for now, just store image count)
+    const imageCount = Array.from(formData.keys()).filter(key => key.startsWith('image_')).length
+
+    // Get or create seller user
+    let sellerId: number
+    const existingSeller = await query<{ id: number }[]>(
+      "SELECT id FROM users WHERE wallet_address = ? LIMIT 1",
+      [sellerWallet]
+    )
+
+    if (existingSeller.length > 0) {
+      sellerId = existingSeller[0].id
+    } else {
+      // Create new seller user
+      const newSeller = await query(
+        "INSERT INTO users (email, password_hash, wallet_address, first_name, last_name) VALUES (?, ?, ?, ?, ?)",
+        [`seller_${Date.now()}@temp.com`, 'temp_hash', sellerWallet, sellerName || 'Seller', '']
+      )
+      sellerId = newSeller.insertId
+    }
+
+    // Get category ID
+    const categoryResult = await query<{ id: number }[]>(
+      "SELECT id FROM categories WHERE name = ? AND is_active = TRUE LIMIT 1",
+      [category]
+    )
+    const categoryId = categoryResult.length > 0 ? categoryResult[0].id : null
+
+    // Create images JSON array
+    const images = Array.from({ length: imageCount }, (_, i) => `image_${i + 1}.jpg`)
+
+    // Insert product into products table
+    const result = await query(
       `INSERT INTO products (
-        seller_id,
-        name,
-        description,
-        price_cents,
-        currency,
+        seller_id, 
+        category_id,
+        name, 
+        description, 
+        price_cents, 
+        currency, 
         condition_enum,
-        is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, 1)`,
-      [sellerId, title, description, priceCents, currency, condition.toLowerCase()],
+        brand,
+        model,
+        warranty_info,
+        shipping_method,
+        return_policy,
+        estimated_delivery_days,
+        images
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        sellerId,
+        categoryId,
+        productName,
+        description,
+        amountCents,
+        currency,
+        condition,
+        brand || null,
+        model || null,
+        warranty || null,
+        shippingMethod || null,
+        returnPolicy || null,
+        parseInt(estimatedDelivery) || null,
+        JSON.stringify(images)
+      ]
     )
 
     return NextResponse.json({ success: true, productId: (result as any).insertId })
@@ -63,30 +118,50 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
-    const sellerId = searchParams.get("sellerId")
+    const category = searchParams.get("category")
+    const sellerWallet = searchParams.get("sellerWallet")
+    const limit = parseInt(searchParams.get("limit") || "50")
+    const offset = parseInt(searchParams.get("offset") || "0")
 
     let sql = `
       SELECT 
         p.id,
         p.name,
+        p.description,
         p.price_cents,
         p.currency,
+        p.condition_enum,
+        p.brand,
+        p.model,
+        p.warranty_info,
+        p.shipping_method,
+        p.return_policy,
+        p.estimated_delivery_days,
+        p.images,
+        p.view_count,
         p.created_at,
-        u.email AS seller_name
+        u.first_name as seller_name,
+        u.wallet_address as seller_wallet,
+        c.name as category_name
       FROM products p
-      LEFT JOIN users u ON u.id = p.seller_id
-      WHERE p.is_active = 1
+      JOIN users u ON p.seller_id = u.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.is_active = TRUE
     `
     const params: any[] = []
 
-    if (sellerId) {
-      sql += " AND p.seller_id = ?"
-      params.push(Number(sellerId))
+    if (category) {
+      sql += " AND c.name = ?"
+      params.push(category)
     }
 
-    sql += " ORDER BY p.created_at DESC"
+    if (sellerWallet) {
+      sql += " AND u.wallet_address = ?"
+      params.push(sellerWallet)
+    }
 
-    const rows = await query<any[]>(sql, params)
+    sql += " ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+    params.push(limit, offset)
 
     const products = rows.map((r) => ({
       id: r.id,
@@ -98,7 +173,38 @@ export async function GET(req: Request) {
       status: "available",
     }))
 
-    return NextResponse.json({ products })
+    // Get total count for pagination
+    let countSql = `
+      SELECT COUNT(*) as total
+      FROM products p
+      JOIN users u ON p.seller_id = u.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.is_active = TRUE
+    `
+    const countParams: any[] = []
+
+    if (category) {
+      countSql += " AND c.name = ?"
+      countParams.push(category)
+    }
+
+    if (sellerWallet) {
+      countSql += " AND u.wallet_address = ?"
+      countParams.push(sellerWallet)
+    }
+
+    const [countResult] = await query<{ total: number }[]>(countSql, countParams)
+    const total = countResult[0]?.total || 0
+
+    return NextResponse.json({ 
+      products,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + limit < total
+      }
+    })
   } catch (error) {
     console.error("Error fetching products:", error)
     return NextResponse.json(

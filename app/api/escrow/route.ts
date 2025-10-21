@@ -11,7 +11,8 @@ export async function GET(req: Request) {
   const rows = await query<
     {
       id: number
-      product: string
+      product_id: number
+      product_name: string
       amount_cents: number
       currency: string
       status: string
@@ -19,13 +20,25 @@ export async function GET(req: Request) {
       buyer_wallet: string
       seller_wallet: string
       created_at: string
-      estimated_release_at: string | null
+      release_date: string | null
     }[]
   >(
     `
-    SELECT id, product, amount_cents, currency, status, escrow_hash, buyer_wallet, seller_wallet, created_at, estimated_release_at
-    FROM orders
-    WHERE id = ?
+    SELECT 
+      o.id, 
+      o.product_id,
+      p.name as product_name,
+      o.amount_cents, 
+      o.currency, 
+      o.status, 
+      o.escrow_hash, 
+      o.buyer_wallet, 
+      o.seller_wallet, 
+      o.created_at, 
+      o.release_date
+    FROM orders o
+    JOIN products p ON o.product_id = p.id
+    WHERE o.id = ?
     LIMIT 1
   `,
     [orderId],
