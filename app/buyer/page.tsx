@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { WalletConnection } from "@/components/wallet-connection"
@@ -44,6 +44,8 @@ const formatCurrency = (cents: number, currency: string) =>
 
 export default function BuyerDashboard() {
   const [isWalletConnected, setIsWalletConnected] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => setIsMounted(true), [])
   const [showProductBrowser, setShowProductBrowser] = useState(false)
   const { address } = useAccount()
 
@@ -63,6 +65,16 @@ export default function BuyerDashboard() {
   const handleProductSelected = (product: any) => {
     setShowProductBrowser(false)
     refetch()
+  }
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <main className="pt-24 pb-12" />
+        <Footer />
+      </div>
+    )
   }
 
   if (!isWalletConnected) {

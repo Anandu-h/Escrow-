@@ -67,9 +67,7 @@ export function HeroSection() {
             </div>
           </div>
 
-          <p className="text-sm text-primary font-medium tracking-wide glow-text-soft">
-            TRUSTED BY SECURE TRANSACTIONS WORLDWIDE
-          </p>
+          {/* Tagline removed per request */}
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-balance">
             <div className="mb-4 min-h-[1.2em]">

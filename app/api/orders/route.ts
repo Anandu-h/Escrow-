@@ -13,8 +13,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing wallet address" }, { status: 400 })
   }
 
-  // Map role to column
-  const col = role === "buyer" ? "buyer_wallet" : "seller_wallet"
+  const col = role === "buyer" ? "o.buyer_wallet" : "o.seller_wallet"
 
   const rows = await query<
     {
@@ -68,7 +67,7 @@ export async function POST(req: Request) {
     if (!productId || !buyerWallet) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -85,13 +84,25 @@ export async function POST(req: Request) {
     )
 
     if (product.length === 0) {
-      return NextResponse.json(
-        { error: "Product not found or not available" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Product not found or inactive" }, { status: 404 })
     }
 
-    const productData = product[0]
+    const prod = product[0]
+
+    // Resolve or auto-create buyer user
+    let buyer = await query<{ id: number }[]>(
+      "SELECT id FROM users WHERE LOWER(wallet_address) = LOWER(?) LIMIT 1",
+      [buyerWallet],
+    )
+    if (buyer.length === 0) {
+      const email = `${buyerWallet.toLowerCase()}@local`
+      const passwordHash = "autocreated"
+      const ins = await query<{ insertId: number }>(
+        `INSERT INTO users (email, password_hash, wallet_address) VALUES (?, ?, ?)`,
+        [email, passwordHash, buyerWallet],
+      )
+      buyer = [{ id: (ins as any).insertId }]
+    }
 
     // Get or create buyer user
     let buyerId: number
@@ -138,7 +149,7 @@ export async function POST(req: Request) {
     console.error("Error processing purchase:", error)
     return NextResponse.json(
       { error: "Failed to process purchase" },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

@@ -4,28 +4,35 @@ import { query } from "@/lib/db"
 export async function POST(req: Request) {
   try {
     const formData = await req.formData()
-    
-    const productName = formData.get("productName") as string
-    const description = formData.get("description") as string
-    const price = parseFloat(formData.get("price") as string)
-    const currency = formData.get("currency") as string
-    const category = formData.get("category") as string
-    const estimatedDelivery = formData.get("estimatedDelivery") as string
-    const condition = formData.get("condition") as string
-    const brand = formData.get("brand") as string
-    const model = formData.get("model") as string
-    const warranty = formData.get("warranty") as string
-    const shippingMethod = formData.get("shippingMethod") as string
-    const returnPolicy = formData.get("returnPolicy") as string
-    const sellerWallet = formData.get("sellerWallet") as string
-    const sellerName = formData.get("sellerName") as string
 
-    // Validate required fields
-    if (!productName || !description || !price || !currency || !category || !estimatedDelivery || !condition || !sellerWallet) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
+    const productName = (formData.get("productName") as string) || ""
+    const description = (formData.get("description") as string) || ""
+    const price = parseFloat((formData.get("price") as string) || "0")
+    const currency = ((formData.get("currency") as string) || "USD").toUpperCase()
+    const condition = (formData.get("condition") as string) || "good"
+    const sellerWallet = (formData.get("sellerWallet") as string) || ""
+
+    if (!sellerWallet) {
+      return NextResponse.json({ error: "Seller wallet is required" }, { status: 400 })
+    }
+
+    const title = productName && productName.trim() !== "" ? productName.trim() : "Product"
+    const priceCents = Number.isFinite(price) && price > 0 ? Math.round(price * 100) : 0
+
+    // Resolve or auto-create seller by wallet
+    let users = await query<{ id: number }[]>(
+      "SELECT id FROM users WHERE LOWER(wallet_address) = LOWER(?) LIMIT 1",
+      [sellerWallet],
+    )
+
+    if (users.length === 0) {
+      const email = `${sellerWallet.toLowerCase()}@local`
+      const passwordHash = "autocreated"
+      const insertUser = await query<{ insertId: number }>(
+        `INSERT INTO users (email, password_hash, wallet_address) VALUES (?, ?, ?)`,
+        [email, passwordHash, sellerWallet],
       )
+      users = [{ id: (insertUser as any).insertId }]
     }
 
     // Convert price to cents for storage
@@ -98,16 +105,12 @@ export async function POST(req: Request) {
       ]
     )
 
-    return NextResponse.json({
-      success: true,
-      productId: result.insertId,
-      message: "Product created successfully",
-    })
+    return NextResponse.json({ success: true, productId: (result as any).insertId })
   } catch (error) {
     console.error("Error creating product:", error)
     return NextResponse.json(
       { error: "Failed to create product" },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
@@ -160,7 +163,15 @@ export async function GET(req: Request) {
     sql += " ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
     params.push(limit, offset)
 
-    const products = await query(sql, params)
+    const products = rows.map((r) => ({
+      id: r.id,
+      product: r.name,
+      amount_cents: r.price_cents,
+      currency: r.currency,
+      created_at: r.created_at,
+      seller_name: r.seller_name || "Seller",
+      status: "available",
+    }))
 
     // Get total count for pagination
     let countSql = `
@@ -198,7 +209,7 @@ export async function GET(req: Request) {
     console.error("Error fetching products:", error)
     return NextResponse.json(
       { error: "Failed to fetch products" },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
